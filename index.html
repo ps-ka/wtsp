@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Chat Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #ece5dd;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        #sidebar {
+            width: 320px;
+            background: #fff;
+            border-right: 1px solid #d1d7db;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            background: #075e54;
+            color: white;
+            padding: 20px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .upload-section {
+            padding: 20px;
+            border-bottom: 1px solid #e9edef;
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #075e54;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .upload-btn:hover {
+            background: #128c7e;
+        }
+
+        .upload-btn.secondary {
+            background: #25d366;
+        }
+
+        .upload-btn.secondary:hover {
+            background: #20ba5a;
+        }
+
+        .upload-btn.restore {
+            background: #34b7f1;
+        }
+
+        .upload-btn.restore:hover {
+            background: #2da1d8;
+        }
+
+        #chatList {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .chat-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9edef;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-item:hover {
+            background: #f0f2f5;
+        }
+
+        .chat-item.active {
+            background: #e9edef;
+        }
+
+        .chat-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #075e54;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .chat-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .chat-name {
+            font-weight: 500;
+            font-size: 16px;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-meta {
+            font-size: 12px;
+            color: #667781;
+        }
+
+        .chat-remove {
+            padding: 6px 12px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .chat-item:hover .chat-remove {
+            opacity: 1;
+        }
+
+        .sidebar-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #e9edef;
+        }
+
+        .clear-btn {
+            width: 100%;
+            padding: 10px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .clear-btn:hover {
+            background: #cc0000;
+        }
+
+        /* Main Chat Area */
+        #chatView {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #ece5dd;
+        }
+
+        .chat-header {
+            background: #075e54;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .chat-header-info {
+            flex: 1;
+        }
+
+        .chat-header h2 {
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+
+        .chat-header p {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            scroll-behavior: smooth;
+        }
+
+        .date-separator {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .date-separator span {
+            background: rgba(225, 245, 254, 0.92);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #54656f;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .message-row {
+            display: flex;
+            margin-bottom: 12px;
+            align-items: flex-end;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-row.sent {
+            justify-content: flex-end;
+        }
+
+        .message-row.received {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 65%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            word-wrap: break-word;
+            transition: transform 0.2s;
+        }
+
+        .message-bubble:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+
+        .sent .message-bubble {
+            background: #d9fdd3;
+            border-bottom-right-radius: 2px;
+        }
+
+        .received .message-bubble {
+            background: #fff;
+            border-bottom-left-radius: 2px;
+        }
+
+        .sender-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: #075e54;
+            margin-bottom: 4px;
+        }
+
+        .message-text {
+            font-size: 14px;
+            color: #111b21;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message-media {
+            margin-top: 8px;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .message-media:hover {
+            transform: scale(1.02);
+        }
+
+        .message-media img,
+        .message-media video {
+            max-width: 280px;
+            width: 100%;
+            display: block;
+            border-radius: 8px;
+        }
+
+        .message-media audio {
+            width: 100%;
+            max-width: 280px;
+        }
+
+        .timestamp {
+            font-size: 11px;
+            color: #667781;
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #667781;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .empty-state h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #111b21;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        /* Media Modal */
+        #mediaModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 10000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        #mediaModal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 10001;
+        }
+
+        .modal-btn {
+            padding: 12px 18px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .modal-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .modal-btn.download {
+            background: rgba(37, 211, 102, 0.3);
+        }
+
+        .modal-btn.download:hover {
+            background: rgba(37, 211, 102, 0.5);
+        }
+
+        #modalContent {
+            max-width: 90vw;
+            max-height: 80vh;
+            position: relative;
+        }
+
+        #modalContent img,
+        #modalContent video {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .modal-nav {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            transition: all 0.2s;
+            z-index: 10001;
+        }
+
+        .modal-nav:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        #modalPrev { left: 20px; }
+        #modalNext { right: 20px; }
+
+        /* Loading */
+        #loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #loading.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #25d366;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            #sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100vh;
+                z-index: 1000;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            }
+
+            #sidebar.mobile-hidden {
+                transform: translateX(-100%);
+            }
+
+            .menu-btn {
+                display: block;
+            }
+
+            .message-bubble {
+                max-width: 80%;
+            }
+
+            .modal-controls {
+                top: 10px;
+                right: 10px;
+                flex-direction: column;
+            }
+
+            .modal-btn {
+                padding: 10px 14px;
+                font-size: 12px;
+            }
+
+            .modal-nav {
+                padding: 10px 15px;
+                font-size: 20px;
+            }
+
+            #modalPrev { left: 10px; }
+            #modalNext { right: 10px; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <div class="sidebar-header">
+                <h1>💬 WhatsApp Viewer</h1>
+                <p>Upload and view your chats</p>
+            </div>
+
+            <div class="upload-section">
+                <button class="upload-btn" id="uploadBtn">
+                    📁 Upload ZIP File
+                </button>
+                <input type="file" id="fileInput" accept=".zip" />
+
+                <button class="upload-btn secondary" id="folderBtn">
+                    📂 Upload Folder
+                </button>
+                <input type="file" id="folderInput" webkitdirectory directory multiple />
+
+                <button class="upload-btn restore" id="restoreBtn">
+                    🔄 Restore Backup
+                </button>
+                <input type="file" id="restoreInput" accept=".json" />
+            </div>
+
+            <div id="chatList"></div>
+
+            <div class="sidebar-footer">
+                <button class="clear-btn" id="clearAllBtn">Clear All Chats</button>
+            </div>
+        </div>
+
+        <!-- Main Chat View -->
+        <div id="chatView">
+            <div class="chat-header">
+                <button class="menu-btn" id="openSidebar">☰</button>
+                <div class="chat-header-info" id="mobileHeaderTitle">
+                    <h2>Select a chat</h2>
+                    <p>Choose from sidebar</p>
+                </div>
+            </div>
+
+            <div id="messages">
+                <div class="empty-state">
+                    <h2>Welcome to WhatsApp Viewer</h2>
+                    <p>Upload a WhatsApp export (ZIP or folder) to view your chats</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Media Modal -->
+    <div id="mediaModal">
+        <div class="modal-controls">
+            <button class="modal-btn download" id="modalDownload">⬇️ Download</button>
+            <button class="modal-btn" id="modalClose">✖️ Close</button>
+        </div>
+        <button class="modal-nav" id="modalPrev">‹</button>
+        <div id="modalContent"></div>
+        <button class="modal-nav" id="modalNext">›</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        // Global state
+        let chats = [];
+        let currentChatId = null;
+        let allMediaItems = [];
+        let currentMediaIndex = 0;
+
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const folderInput = document.getElementById('folderInput');
+        const folderBtn = document.getElementById('folderBtn');
+        const restoreInput = document.getElementById('restoreInput');
+        const restoreBtn = document.getElementById('restoreBtn');
+        const chatList = document.getElementById('chatList');
+        const chatView = document.getElementById('chatView');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const sidebar = document.getElementById('sidebar');
+        const openSidebar = document.getElementById('openSidebar');
+        const mobileHeaderTitle = document.getElementById('mobileHeaderTitle');
+        const loading = document.getElementById('loading');
+        const mediaModal = document.getElementById('mediaModal');
+        const modalContent = document.getElementById('modalContent');
+        const modalClose = document.getElementById('modalClose');
+        const modalDownload = document.getElementById('modalDownload');
+        const modalPrev = document.getElementById('modalPrev');
+        const modalNext = document.getElementById('modalNext');
+
+        // Event Listeners
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        folderBtn.addEventListener('click', () => folderInput.click());
+        restoreBtn.addEventListener('click', () => restoreInput.click());
+        fileInput.addEventListener('change', handleFileUpload);
+        folderInput.addEventListener('change', handleFolderUpload);
+        restoreInput.addEventListener('change', handleRestore);
+        clearAllBtn.addEventListener('click', clearAllChats);
+        openSidebar.addEventListener('click', () => sidebar.classList.remove('mobile-hidden'));
+        modalClose.addEventListener('click', closeModal);
+        modalDownload.addEventListener('click', downloadMedia);
+        modalPrev.addEventListener('click', () => navigateMedia(-1));
+        modalNext.addEventListener('click', () => navigateMedia(1));
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (mediaModal.classList.contains('show')) {
+                if (e.key === 'Escape') closeModal();
+                if (e.key === 'ArrowLeft') navigateMedia(-1);
+                if (e.key === 'ArrowRight') navigateMedia(1);
+            }
+        });
+
+        // Close modal on background click
+        mediaModal.addEventListener('click', (e) => {
+            if (e.target === mediaModal) closeModal();
+        });
+
+        // Handle ZIP file upload
+        async function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            showLoading(true);
+            try {
+                const zip = await JSZip.loadAsync(file);
+                const chatData = await extractChatFromZip(zip);
+                addChat(chatData);
+                autoDownloadBackup();
+            } catch (error) {
+                alert('Error loading ZIP: ' + error.message);
+            }
+            showLoading(false);
+            fileInput.value = '';
+        }
+
+        // Handle folder upload
+        async function handleFolderUpload(e) {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            showLoading(true);
+            try {
+                const chatData = await extractChatFromFolder(files);
+                addChat(chatData);
+                autoDownloadBackup();
+            } catch (error) {
+                alert('Error loading folder: ' + error.message);
+            }
+            showLoading(false);
+            folderInput.value = '';
+        }
+
+        // Extract chat from ZIP
+        async function extractChatFromZip(zip) {
+            let chatText = '';
+            let chatFileName = '';
+            const mediaFiles = new Map();
+
+            // Find chat text file
+            for (const [filename, file] of Object.entries(zip.files)) {
+                if (filename.endsWith('_chat.txt') || (filename.endsWith('.txt') && !file.dir)) {
+                    chatText = await file.async('text');
+                    chatFileName = filename;
+                    break;
+                }
+            }
+
+            if (!chatText) throw new Error('Chat text file not found in ZIP');
+
+            // Extract media files
+            for (const [filename, file] of Object.entries(zip.files)) {
+                if (!file.dir && isMediaFile(filename)) {
+                    const blob = await file.async('blob');
+                    const url = URL.createObjectURL(blob);
+                    const baseName = filename.split('/').pop();
+                    mediaFiles.set(baseName, { url, filename: baseName });
+                }
+            }
+
+            const messages = parseChat(chatText);
+            const chatName = extractChatName(messages);
+
+            return {
+                id: Date.now(),
+                name: chatName,
+                messages,
+                mediaFiles,
+                messageCount: messages.length,
+                timestamp: new Date().toLocaleString()
+            };
+        }
+
+        // Extract chat from folder
+        async function extractChatFromFolder(files) {
+            let chatText = '';
+            let chatFileName = '';
+            const mediaFiles = new Map();
+
+            // Find chat text file
+            for (const file of files) {
+                if (file.name.endsWith('_chat.txt') || (file.name.endsWith('.txt') && file.type === 'text/plain')) {
+                    chatText = await file.text();
+                    chatFileName = file.name;
+                    break;
+                }
+            }
+
+            if (!chatText) throw new Error('Chat text file not found in folder');
+
+            // Extract media files
+            for (const file of files) {
+                if (isMediaFile(file.name)) {
+                    const url = URL.createObjectURL(file);
+                    mediaFiles.set(file.name, { url, filename: file.name });
+                }
+            }
+
+            const messages = parseChat(chatText);
+            const chatName = extractChatName(messages);
+
+            return {
+                id: Date.now(),
+                name: chatName,
+                messages,
+                mediaFiles,
+                messageCount: messages.length,
+                timestamp: new Date().toLocaleString()
+            };
+        }
+
+        // Check if file is media
+        function isMediaFile(filename) {
+            const mediaExtensions = [
+                '.jpg', '.jpeg', '.png', '.gif', '.webp',
+                '.mp4', '.mov', '.avi', '.mkv',
+                '.mp3', '.ogg', '.opus', '.m4a', '.wav'
+            ];
+            return mediaExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+        }
+
+        // Parse WhatsApp chat text
+        function parseChat(text) {
+            const lines = text.split('\n');
+            const messages = [];
+            const patterns = [
+                /^(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s+(\d{1,2}:\d{2})\s*(?:AM|PM|am|pm)?\s*[-–]\s*([^:]+):\s*(.*)$/,
+                /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s+(\d{1,2}:\d{2}:\d{2})\s*(?:AM|PM|am|pm)?\]\s*([^:]+):\s*(.*)$/
+            ];
+
+            let currentMessage = null;
+
+            for (const line of lines) {
+                let matched = false;
+
+                for (const pattern of patterns) {
+                    const match = line.match(pattern);
+                    if (match) {
+                        if (currentMessage) messages.push(currentMessage);
+
+                        const [, date, time, sender, text] = match;
+                        const datetime = parseDateTime(date, time);
+
+                        currentMessage = {
+                            datetime,
+                            sender: sender.trim(),
+                            text: text.trim(),
+                            media: []
+                        };
+                        matched = true;
+                        break;
+                    }
+                }
+
+                if (!matched && currentMessage && line.trim()) {
+                    currentMessage.text += '\n' + line.trim();
+                }
+            }
+
+            if (currentMessage) messages.push(currentMessage);
+
+            return messages.sort((a, b) => a.datetime - b.datetime);
+        }
+
+        // Parse date and time
+        function parseDateTime(dateStr, timeStr) {
+            const [day, month, year] = dateStr.split('/').map(Number);
+            const [hour, minute] = timeStr.split(':').map(Number);
+            const fullYear = year < 100 ? 2000 + year : year;
+            return new Date(fullYear, month - 1, day, hour, minute);
+        }
+
+        // Extract chat name from messages
+        function extractChatName(messages) {
+            if (messages.length === 0) return 'Unknown Chat';
+
+            const senders = [...new Set(messages.map(m => m.sender))];
+            if (senders.length === 1) return senders[0];
+            if (senders.length === 2) return senders.join(' & ');
+            return `Group (${senders.length} members)`;
+        }
+
+        // Add chat to list
+        function addChat(chatData) {
+            chats.push(chatData);
+            renderChatList();
+            selectChat(chatData.id);
+        }
+
+        // Render chat list
+        function renderChatList() {
+            if (chats.length === 0) {
+                chatList.innerHTML = '<div style="padding: 20px; text-align: center; color: #667781;">No chats loaded</div>';
+                return;
+            }
+
+            chatList.innerHTML = chats.map(chat => `
+                <div class="chat-item ${chat.id === currentChatId ? 'active' : ''}" onclick="selectChat(${chat.id})">
+                    <div class="chat-avatar">${chat.name.charAt(0).toUpperCase()}</div>
+                    <div class="chat-info">
+                        <div class="chat-name">${chat.name}</div>
+                        <div class="chat-meta">${chat.messageCount} messages • ${chat.timestamp}</div>
+                    </div>
+                    <button class="chat-remove" onclick="removeChat(${chat.id}); event.stopPropagation();">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        // Select and display chat
+        function selectChat(chatId) {
+            currentChatId = chatId;
+            const chat = chats.find(c => c.id === chatId);
+            if (!chat) return;
+
+            renderChatList();
+            renderMessages(chat);
+            
+            // Update mobile header
+            mobileHeaderTitle.innerHTML = `
+                <h2>${chat.name}</h2>
+                <p>${chat.messageCount} messages</p>
+            `;
+
+            // Hide sidebar on mobile
+            if (window.innerWidth <= 768) {
+                sidebar.classList.add('mobile-hidden');
+            }
+        }
+
+        // Render messages
+        function renderMessages(chat) {
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.innerHTML = '';
+            allMediaItems = [];
+
+            let lastDate = '';
+            const firstSender = chat.messages[0]?.sender;
+
+            chat.messages.forEach(msg => {
+                const dateStr = msg.datetime.toLocaleDateString();
+                
+                if (dateStr !== lastDate) {
+                    const dateSep = document.createElement('div');
+                    dateSep.className = 'date-separator';
+                    dateSep.innerHTML = `<span>${dateStr}</span>`;
+                    messagesContainer.appendChild(dateSep);
+                    lastDate = dateStr;
+                }
+
+                const isSent = msg.sender === firstSender;
+                const row = document.createElement('div');
+                row.className = `message-row ${isSent ? 'sent' : 'received'}`;
+
+                const bubble = document.createElement('div');
+                bubble.className = 'message-bubble';
+
+                if (!isSent) {
+                    const senderName = document.createElement('div');
+                    senderName.className = 'sender-name';
+                    senderName.textContent = msg.sender;
+                    bubble.appendChild(senderName);
+                }
+
+                // Check for media
+                const mediaPattern = /(IMG|VID|AUD|DOC|PHOTO|VIDEO|AUDIO)-[\w-]+\.(jpg|jpeg|png|gif|webp|mp4|mov|avi|mkv|mp3|ogg|opus|m4a|wav)/gi;
+                const mediaMatches = msg.text.match(mediaPattern);
+
+                if (mediaMatches) {
+                    mediaMatches.forEach(mediaName => {
+                        const mediaData = chat.mediaFiles.get(mediaName);
+                        if (mediaData) {
+                            const mediaDiv = document.createElement('div');
+                            mediaDiv.className = 'message-media';
+
+                            const ext = mediaName.split('.').pop().toLowerCase();
+                            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                                const img = document.createElement('img');
+                                img.src = mediaData.url;
+                                img.alt = mediaName;
+                                mediaDiv.appendChild(img);
+                                allMediaItems.push({ url: mediaData.url, filename: mediaName, type: 'image' });
+                            } else if (['mp4', 'mov', 'avi', 'mkv'].includes(ext)) {
+                                const video = document.createElement('video');
+                                video.src = mediaData.url;
+                                video.controls = true;
+                                mediaDiv.appendChild(video);
+                                allMediaItems.push({ url: mediaData.url, filename: mediaName, type: 'video' });
+                            } else if (['mp3', 'ogg', 'opus', 'm4a', 'wav'].includes(ext)) {
+                                const audio = document.createElement('audio');
+                                audio.src = mediaData.url;
+                                audio.controls = true;
+                                mediaDiv.appendChild(audio);
+                            }
+
+                            mediaDiv.addEventListener('click', () => {
+                                const index = allMediaItems.findIndex(m => m.url === mediaData.url);
+                                if (index >= 0) openMediaModal(index);
+                            });
+
+                            bubble.appendChild(mediaDiv);
+                        }
+                    });
+                }
+
+                // Add text if not just media reference
+                const textWithoutMedia = msg.text.replace(mediaPattern, '').trim();
+                if (textWithoutMedia && textWithoutMedia !== '<Media omitted>') {
+                    const textDiv = document.createElement('div');
+                    textDiv.className = 'message-text';
+                    textDiv.textContent = textWithoutMedia;
+                    bubble.appendChild(textDiv);
+                }
+
+                const timestamp = document.createElement('div');
+                timestamp.className = 'timestamp';
+                timestamp.textContent = msg.datetime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                bubble.appendChild(timestamp);
+
+                row.appendChild(bubble);
+                messagesContainer.appendChild(row);
+            });
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Media modal functions
+        function openMediaModal(index) {
+            if (index < 0 || index >= allMediaItems.length) return;
+            
+            currentMediaIndex = index;
+            const media = allMediaItems[index];
+            
+            modalContent.innerHTML = '';
+            
+            if (media.type === 'image') {
+                const img = document.createElement('img');
+                img.src = media.url;
+                img.alt = media.filename;
+                modalContent.appendChild(img);
+            } else if (media.type === 'video') {
+                const video = document.createElement('video');
+                video.src = media.url;
+                video.controls = true;
+                video.autoplay = true;
+                modalContent.appendChild(video);
+            }
+            
+            mediaModal.classList.add('show');
+        }
+
+        function closeModal() {
+            mediaModal.classList.remove('show');
+            modalContent.innerHTML = '';
+        }
+
+        function navigateMedia(direction) {
+            const newIndex = currentMediaIndex + direction;
+            if (newIndex >= 0 && newIndex < allMediaItems.length) {
+                openMediaModal(newIndex);
+            }
+        }
+
+        function downloadMedia() {
+            const media = allMediaItems[currentMediaIndex];
+            if (!media) return;
+
+            const a = document.createElement('a');
+            a.href = media.url;
+            a.download = media.filename;
+            a.click();
+        }
+
+        // Remove chat
+        function removeChat(chatId) {
+            chats = chats.filter(c => c.id !== chatId);
+            if (currentChatId === chatId) {
+                currentChatId = null;
+                document.getElementById('messages').innerHTML = '<div class="empty-state"><h2>Chat Removed</h2><p>Select another chat from the sidebar</p></div>';
+            }
+            renderChatList();
+            autoDownloadBackup();
+        }
+
+        // Clear all chats
+        function clearAllChats() {
+            if (!confirm('Clear all chats? This cannot be undone.')) return;
+            chats = [];
+            currentChatId = null;
+            renderChatList();
+            document.getElementById('messages').innerHTML = '<div class="empty-state"><h2>All Chats Cleared</h2><p>Upload new chats to get started</p></div>';
+        }
+
+        // Auto download backup
+        function autoDownloadBackup() {
+            if (chats.length === 0) return;
+
+            const backup = {
+                version: 1,
+                timestamp: new Date().toISOString(),
+                chats: chats.map(chat => ({
+                    ...chat,
+                    mediaFiles: Array.from(chat.mediaFiles.entries())
+                }))
+            };
+
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `whatsapp-backup-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Restore from backup
+        async function handleRestore(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            showLoading(true);
+            try {
+                const text = await file.text();
+                const backup = JSON.parse(text);
+
+                if (!backup.chats || !Array.isArray(backup.chats)) {
+                    throw new Error('Invalid backup file');
+                }
+
+                chats = backup.chats.map(chat => ({
+                    ...chat,
+                    mediaFiles: new Map(chat.mediaFiles)
+                }));
+
+                renderChatList();
+                if (chats.length > 0) {
+                    selectChat(chats[0].id);
+                }
+
+                alert('Backup restored successfully!');
+            } catch (error) {
+                alert('Error restoring backup: ' + error.message);
+            }
+            showLoading(false);
+            restoreInput.value = '';
+        }
+
+        // Show/hide loading
+        function showLoading(show) {
+            loading.classList.toggle('show', show);
+        }
+    </script>
+</body>
+</html>
