@@ -3,10 +3,17 @@ let chats = [];
 let currentChatId = null;
 let allMediaItems = [];
 let currentMediaIndex = 0;
+let supportsDirectoryPicker = false;
+let isSelectingFolder = false;
 
 // DOM Elements
 const fileInput = document.getElementById('fileInput');
 const uploadBtn = document.getElementById('uploadBtn');
+const folderInput = document.getElementById('folderInput');
+const folderBtn = document.getElementById('folderBtn');
+const uploadInstructions = document.getElementById('uploadInstructions');
+const folderInstructions = document.getElementById('folderInstructions');
+const folderFileCount = document.getElementById('folderFileCount');
 const restoreInput = document.getElementById('restoreInput');
 const restoreBtn = document.getElementById('restoreBtn');
 const chatList = document.getElementById('chatList');
@@ -23,11 +30,25 @@ const modalClose = document.getElementById('modalClose');
 const modalDownload = document.getElementById('modalDownload');
 const modalPrev = document.getElementById('modalPrev');
 const modalNext = document.getElementById('modalNext');
+const manualBackupBtn = document.getElementById('manualBackupBtn');
+const backupInfo = document.getElementById('backupInfo');
+const toastContainer = document.getElementById('toastContainer');
+
+// Restore V5: Always show folder upload UI (simple & direct)
+function checkUploadUI() {
+    if (uploadInstructions) uploadInstructions.style.display = 'block';
+    if (folderInstructions) folderInstructions.style.display = 'block';
+}
+
+// Removed folder button logic (no longer needed)
 
 // Event Listeners
 uploadBtn.addEventListener('click', () => fileInput.click());
+folderBtn.addEventListener('click', () => folderInput.click());
 restoreBtn.addEventListener('click', () => restoreInput.click());
 fileInput.addEventListener('change', handleFileUpload);
+folderInput.addEventListener('change', handleFolderUpload);
+
 restoreInput.addEventListener('change', handleRestore);
 clearAllBtn.addEventListener('click', clearAllChats);
 openSidebar.addEventListener('click', () => sidebar.classList.remove('mobile-hidden'));
@@ -36,6 +57,7 @@ modalClose.addEventListener('click', closeModal);
 modalDownload.addEventListener('click', downloadCurrentMedia);
 modalPrev.addEventListener('click', showPrevMedia);
 modalNext.addEventListener('click', showNextMedia);
+manualBackupBtn.addEventListener('click', manualBackup);
 
 // Parse WhatsApp chat text
 function parseWhatsAppChat(text) {
@@ -163,19 +185,15 @@ function formatTime(timestamp) {
 async function handleFileUpload(event) {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
-    
     loading.classList.add('active');
-    
     try {
         for (const file of files) {
             await processZipFile(file);
         }
-        
         renderChatList();
-        
-        // Auto-download backup
+        updateBackupButton();
         if (chats.length > 0) {
-            setTimeout(() => downloadBackup(), 1000);
+            showToast('✅ Chat loaded successfully! You can save a backup now.', 'success');
         }
     } catch (error) {
         console.error('Error processing files:', error);
@@ -185,6 +203,36 @@ async function handleFileUpload(event) {
         fileInput.value = '';
     }
 }
+
+// V5: Simple folder upload handler
+async function handleFolderUpload(event) {
+    const files = Array.from(event.target.files);
+    if (!files.length) {
+        showToast('⚠️ No files selected', 'warning');
+        if (folderFileCount) folderFileCount.textContent = '';
+        return;
+    }
+    if (folderFileCount) folderFileCount.textContent = `${files.length} file${files.length > 1 ? 's' : ''} selected.`;
+    loading.classList.add('active');
+    try {
+        await processFolderFiles(files);
+        renderChatList();
+        updateBackupButton();
+        if (chats.length > 0) {
+            showToast('✅ Folder loaded successfully! You can save a backup now.', 'success');
+        } else {
+            showToast('⚠️ No valid chat files found. Make sure to select a WhatsApp Export folder.', 'warning');
+        }
+    } catch (error) {
+        console.error('Error processing files:', error);
+        showToast('❌ Error processing files: ' + error.message, 'warning');
+    } finally {
+        loading.classList.remove('active');
+        event.target.value = '';
+        setTimeout(() => { if (folderFileCount) folderFileCount.textContent = ''; }, 2000);
+    }
+}
+
 
 // Process ZIP file
 async function processZipFile(file) {
@@ -257,16 +305,16 @@ async function processZipFile(file) {
 
 // Check if file is media
 function isMediaFile(fileName) {
-    const mediaExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.avi', '.mp3', '.ogg', '.wav', '.opus'];
+    const mediaExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mov', '.avi', '.mkv', '.mp3', '.ogg', '.opus', '.m4a', '.wav'];
     return mediaExtensions.some(ext => fileName.toLowerCase().endsWith(ext));
 }
 
 // Get media type
 function getMediaType(fileName) {
     const ext = fileName.toLowerCase().split('.').pop();
-    if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) return 'image';
-    if (['mp4', 'mov', 'avi'].includes(ext)) return 'video';
-    if (['mp3', 'ogg', 'wav', 'opus'].includes(ext)) return 'audio';
+    if (["jpg","jpeg","png","gif","webp"].includes(ext)) return 'image';
+    if (["mp4","mov","avi","mkv"].includes(ext)) return 'video';
+    if (["mp3","ogg","opus","m4a","wav"].includes(ext)) return 'audio';
     return 'unknown';
 }
 
@@ -479,6 +527,7 @@ function removeChat(chatId) {
     }
     
     renderChatList();
+    updateBackupButton();
 }
 
 // Clear all chats
@@ -487,6 +536,7 @@ function clearAllChats() {
         chats = [];
         currentChatId = null;
         renderChatList();
+        updateBackupButton();
         chatView.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">💬</div>
@@ -495,7 +545,44 @@ function clearAllChats() {
             </div>
         `;
         mobileHeaderTitle.textContent = 'WhatsApp Chat Viewer';
+        showToast('🗑️ All chats cleared', 'info');
     }
+}
+
+// Show toast notification
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<span>${message}</span>`;
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// Update backup button visibility and info
+function updateBackupButton() {
+    if (chats.length > 0) {
+        manualBackupBtn.style.display = 'block';
+        backupInfo.style.display = 'block';
+        backupInfo.textContent = `${chats.length} chat${chats.length > 1 ? 's' : ''} ready to backup`;
+    } else {
+        manualBackupBtn.style.display = 'none';
+        backupInfo.style.display = 'none';
+    }
+}
+
+// Manual backup function
+function manualBackup() {
+    if (chats.length === 0) {
+        showToast('⚠️ No chats to backup', 'warning');
+        return;
+    }
+    
+    downloadBackup();
+    showToast('✅ Backup saved to Downloads folder!', 'success');
 }
 
 // Download backup
@@ -523,6 +610,19 @@ async function handleRestore(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    // Show warning before restoring
+    const confirmed = confirm(
+        '⚠️ IMPORTANT: Backup contains chat structure only.\n\n' +
+        'Media files (images, videos, audio) are NOT included in the backup.\n\n' +
+        'To view media, you\'ll need to re-upload the original ZIP/folder files after restoration.\n\n' +
+        'Continue with restoration?'
+    );
+    
+    if (!confirmed) {
+        restoreInput.value = '';
+        return;
+    }
+    
     loading.classList.add('active');
     
     try {
@@ -530,15 +630,34 @@ async function handleRestore(event) {
         const backup = JSON.parse(text);
         
         if (backup.chats && Array.isArray(backup.chats)) {
-            chats = backup.chats;
+            // Clear existing chats first
+            chats = [];
+            
+            // Restore chat structure (media URLs will be dead blob URLs)
+            chats = backup.chats.map(chat => ({
+                ...chat,
+                // Mark that media needs re-upload
+                mediaRestored: false
+            }));
+            
             renderChatList();
-            alert(`Restored ${chats.length} chat(s) from backup!`);
+            updateBackupButton();
+            
+            showToast(
+                `✅ Restored ${chats.length} chat${chats.length > 1 ? 's' : ''}! Media files not included - upload original files to view media.`,
+                'success'
+            );
+            
+            // Show additional info toast
+            setTimeout(() => {
+                showToast('💡 Tip: Re-upload your original ZIP/folder files to restore media', 'info');
+            }, 4500);
         } else {
             throw new Error('Invalid backup file format');
         }
     } catch (error) {
         console.error('Error restoring backup:', error);
-        alert('Error restoring backup. Please check the file.');
+        showToast('❌ Error restoring backup. Please check the file.', 'warning');
     } finally {
         loading.classList.remove('active');
         restoreInput.value = '';
@@ -548,6 +667,70 @@ async function handleRestore(event) {
 // Make removeChat globally accessible
 window.removeChat = removeChat;
 window.openMediaModal = openMediaModal;
+
+// Initialize upload UI on page load
+checkUploadUI();
+
+// --------- Folder upload implementation ---------
+// Process all files from folder input
+async function processFolderFiles(fileList) {
+    // Find all _chat.txt or .txt files
+    const chatFiles = fileList.filter(f => f.name.endsWith('_chat.txt') || (f.name.endsWith('.txt') && !f.webkitRelativePath.includes('/Media/')));
+    if (chatFiles.length === 0) {
+        throw new Error('No WhatsApp chat text file found (looked for _chat.txt or .txt)');
+    }
+    
+    // Process each chat text file
+    for (const chatFile of chatFiles) {
+        const chatText = await chatFile.text();
+        const messages = parseWhatsAppChat(chatText);
+        const mediaFiles = {};
+        // Find all media files in same folder structure
+        for (const mediaFile of fileList) {
+            if (isMediaFile(mediaFile.name)) {
+                // Use full filename or base
+                const baseName = mediaFile.name.split('/').pop();
+                const url = URL.createObjectURL(mediaFile);
+                mediaFiles[baseName] = {
+                    url: url,
+                    name: baseName,
+                    type: getMediaType(baseName)
+                };
+            }
+        }
+        // Link media to messages
+        messages.forEach(msg => {
+            const mediaPattern = /(IMG-|VID-|AUD-|PTT-|VOICE-|VIDE-|PHOTO-)[\w-]+\.[\w]+|<Media omitted>|\.(jpg|jpeg|png|gif|webp|mp4|mov|avi|mkv|mp3|ogg|opus|m4a|wav)/gi;
+            const matches = msg.text.match(mediaPattern);
+            if (matches) {
+                for (const match of matches) {
+                    for (const [fileName, mediaData] of Object.entries(mediaFiles)) {
+                        if (fileName.includes(match.replace('<Media omitted>', '')) || match.includes(fileName)) {
+                            msg.media = mediaData;
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+        // Extract chat name from first message
+        let chatName = 'Unknown Chat';
+        if (messages.length > 0) {
+            const senders = [...new Set(messages.map(m => m.sender))];
+            chatName = senders.length > 1 ? senders.join(', ') : senders[0];
+            if (chatName.length > 50) chatName = chatName.substring(0,47) + '...';
+        }
+        const chat = {
+            id: Date.now() + Math.random(),
+            name: chatName,
+            messages: messages,
+            mediaFiles: mediaFiles,
+            lastMessage: messages[messages.length - 1]?.text || 'No messages',
+            timestamp: messages[messages.length -1]?.timestamp || Date.now()
+        };
+        chats.push(chat);
+    }
+}
 
 // Keyboard shortcuts for modal
 document.addEventListener('keydown', (e) => {
