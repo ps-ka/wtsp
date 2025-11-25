@@ -5,6 +5,7 @@ let allMediaItems = [];
 let currentMediaIndex = 0;
 let supportsDirectoryPicker = false;
 let isSelectingFolder = false;
+let needsMediaReload = false;
 
 // DOM Elements
 const zipInput = document.getElementById('zipInput');
@@ -34,6 +35,8 @@ const modalNext = document.getElementById('modalNext');
 const manualBackupBtn = document.getElementById('manualBackupBtn');
 const backupInfo = document.getElementById('backupInfo');
 const toastContainer = document.getElementById('toastContainer');
+const mediaReloadBtn = document.getElementById('mediaReloadBtn');
+const mediaReloadInput = document.getElementById('mediaReloadInput');
 
 // Event Listeners
 zipBtn.addEventListener('click', () => zipInput.click());
@@ -79,6 +82,8 @@ modalDownload.addEventListener('click', downloadCurrentMedia);
 modalPrev.addEventListener('click', showPrevMedia);
 modalNext.addEventListener('click', showNextMedia);
 manualBackupBtn.addEventListener('click', manualBackup);
+if (mediaReloadBtn) mediaReloadBtn.addEventListener('click', () => mediaReloadInput.click());
+if (mediaReloadInput) mediaReloadInput.addEventListener('change', handleMediaReload);
 
 // Parse WhatsApp chat text
 function parseWhatsAppChat(text) {
@@ -460,9 +465,11 @@ function renderChatView(chat) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message';
         
-        // Determine if sent or received (simple heuristic)
-        const isFirstSender = msg.sender === chat.messages[0].sender;
-        messageDiv.classList.add(isFirstSender ? 'sent' : 'received');
+        // Determine if sent or received
+        // First sender in chat is the OTHER person, not the user
+        const firstSender = chat.messages[0].sender;
+        const isSent = msg.sender !== firstSender; // User messages are NOT from first sender
+        messageDiv.classList.add(isSent ? 'sent' : 'received');
         
         let mediaHtml = '';
         if (msg.media) {
@@ -628,6 +635,84 @@ function updateBackupButton() {
     }
 }
 
+// Update media reload button visibility
+function updateMediaReloadButton() {
+    if (mediaReloadBtn) {
+        if (needsMediaReload && chats.length > 0) {
+            mediaReloadBtn.style.display = 'block';
+        } else {
+            mediaReloadBtn.style.display = 'none';
+        }
+    }
+}
+
+// Handle media reload after backup restore
+async function handleMediaReload(event) {
+    const files = Array.from(event.target.files);
+    if (!files.length) {
+        showToast('⚠️ No files selected', 'warning');
+        return;
+    }
+    
+    loading.classList.add('active');
+    updateLoading('Reloading media files...', `${files.length} files`);
+    
+    try {
+        let mediaUpdated = 0;
+        
+        // Process all uploaded files and match with existing media
+        for (const file of files) {
+            if (isMediaFile(file.name)) {
+                const baseName = file.name.split('/').pop();
+                const url = URL.createObjectURL(file);
+                const mediaData = {
+                    url: url,
+                    name: baseName,
+                    type: getMediaType(baseName)
+                };
+                
+                // Update media in all chats
+                for (const chat of chats) {
+                    // Update in mediaFiles map
+                    if (chat.mediaFiles && chat.mediaFiles[baseName]) {
+                        chat.mediaFiles[baseName] = mediaData;
+                        mediaUpdated++;
+                    }
+                    
+                    // Update in messages
+                    if (chat.messages) {
+                        for (const msg of chat.messages) {
+                            if (msg.media && msg.media.name === baseName) {
+                                msg.media = mediaData;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Re-render current chat if one is open
+        if (currentChatId) {
+            const currentChat = chats.find(c => c.id === currentChatId);
+            if (currentChat) {
+                renderChatView(currentChat);
+            }
+        }
+        
+        // Clear the flag and hide button
+        needsMediaReload = false;
+        updateMediaReloadButton();
+        
+        showToast(`✅ Media restored! ${mediaUpdated} file${mediaUpdated !== 1 ? 's' : ''} updated.`, 'success');
+    } catch (error) {
+        console.error('Error reloading media:', error);
+        showToast('❌ Error reloading media: ' + error.message, 'warning');
+    } finally {
+        loading.classList.remove('active');
+        event.target.value = '';
+    }
+}
+
 // Manual backup function
 function manualBackup() {
     if (chats.length === 0) {
@@ -697,14 +782,18 @@ async function handleRestore(event) {
             renderChatList();
             updateBackupButton();
             
+            // Set flag to show media reload button
+            needsMediaReload = true;
+            updateMediaReloadButton();
+            
             showToast(
-                `✅ Restored ${chats.length} chat${chats.length > 1 ? 's' : ''}! Media files not included - upload original files to view media.`,
+                `✅ Restored ${chats.length} chat${chats.length > 1 ? 's' : ''}! Please upload files to restore media.`,
                 'success'
             );
             
             // Show additional info toast
             setTimeout(() => {
-                showToast('💡 Tip: Re-upload your original ZIP/folder files to restore media', 'info');
+                showToast('📁 Click "Upload Files for Media" to restore images and videos', 'info');
             }, 4500);
         } else {
             throw new Error('Invalid backup file format');
@@ -724,6 +813,7 @@ window.openMediaModal = openMediaModal;
 
 // Initialize on page load
 updateBackupButton();
+updateMediaReloadButton();
 
 // Process multiple files from file input (MAIN METHOD)
 async function processMultipleFiles(fileList) {
