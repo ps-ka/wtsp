@@ -941,13 +941,16 @@ body {
                 <button class="upload-btn" id="zipBtn">📁 Upload ZIP</button>
                 <p class="upload-help">Upload WhatsApp export ZIP file</p>
 
-                <input type="file" id="folderInput" webkitdirectory directory multiple>
+                <input type="file" id="filesInput" class="file-input" multiple accept=".txt,.jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.avi,.mkv,.mp3,.ogg,.opus,.m4a,.wav">
                 <button class="upload-btn upload-btn-primary" id="filesBtn">📂 Select Files</button>
                 <p class="upload-help upload-help-primary"><strong>Best for mobile:</strong> Select all files at once</p>
 
                 <input type="file" id="restoreInput" class="file-input" accept=".json">
                 <button class="restore-btn" id="restoreBtn">🔄 Restore</button>
                 <p class="upload-help">Load saved backup</p>
+
+                <input type="file" id="mediaReloadInput" class="file-input" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.avi,.mkv,.mp3,.ogg,.opus,.m4a,.wav">
+                <button class="restore-btn" id="mediaReloadBtn" style="display:none;background-color:var(--color-success);color:white;font-weight:600;margin-top:12px;">📁 Upload Files for Media</button>
 
                 <div id="fileCounter" class="file-counter"></div>
             </div>
