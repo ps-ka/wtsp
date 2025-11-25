@@ -820,15 +820,19 @@ body {
                 <input type="file" id="fileInput" class="file-input" accept=".zip">
 <button class="upload-btn" id="uploadBtn">📁 Upload ZIP File</button>
 
-<input type="file" id="folderInput" class="file-input" webkitdirectory directory multiple>
-<button class="upload-btn" id="folderBtn">📂 Upload Folder</button>
+<input type="file" id="multiFileInput" class="file-input" multiple accept=".txt,.jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.avi,.mkv,.mp3,.ogg,.opus,.m4a,.wav">
+<button class="upload-btn" id="multiFileBtn">📱 Select Multiple Files (Mobile)</button>
 
 <input type="file" id="restoreInput" class="file-input" accept=".json">
 <button class="restore-btn" id="restoreBtn">🔄 Restore from Backup</button>
 
-<div style="margin-top:8px;font-size:12px;color:var(--color-text-secondary);">
-    <strong>Upload ZIP File:</strong> Use this for exported WhatsApp ZIPs (supports media)<br>
-    <strong>Upload Folder:</strong> Select the entire WhatsApp export folder (works best on mobile)
+<div id="uploadInstructions" style="margin-top:8px;font-size:12px;color:var(--color-text-secondary);">
+    <strong>📁 Upload ZIP File (Easiest):</strong><br>
+    Upload your exported WhatsApp ZIP file (contains chat + media)
+</div>
+<div id="multiFileInstructions" style="margin-top:8px;font-size:12px;color:var(--color-warning);padding:8px;background:var(--color-bg-2);border-radius:var(--radius-sm);">
+    ℹ️ <strong>Mobile Users:</strong> Tap <b>📱 Select Multiple Files (Mobile)</b> and select <u>all files</u> from your WhatsApp export folder.<br>
+    <span id="multiFileCount"></span>
 </div>
             </div>
 
