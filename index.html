@@ -4,1128 +4,799 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhatsApp Chat Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            background: #ece5dd;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .container {
-            display: flex;
-            height: 100vh;
-        }
-
-        /* Sidebar */
-        #sidebar {
-            width: 320px;
-            background: #fff;
-            border-right: 1px solid #d1d7db;
-            display: flex;
-            flex-direction: column;
-            transition: transform 0.3s ease;
-        }
-
-        .sidebar-header {
-            background: #075e54;
-            color: white;
-            padding: 20px;
-        }
-
-        .sidebar-header h1 {
-            font-size: 20px;
-            margin-bottom: 5px;
-        }
-
-        .sidebar-header p {
-            font-size: 12px;
-            opacity: 0.8;
-        }
-
-        .upload-section {
-            padding: 20px;
-            border-bottom: 1px solid #e9edef;
-        }
-
-        .upload-btn {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
-            background: #075e54;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .upload-btn:hover {
-            background: #128c7e;
-        }
-
-        .upload-btn.secondary {
-            background: #25d366;
-        }
-
-        .upload-btn.secondary:hover {
-            background: #20ba5a;
-        }
-
-        .upload-btn.restore {
-            background: #34b7f1;
-        }
-
-        .upload-btn.restore:hover {
-            background: #2da1d8;
-        }
-
-        #chatList {
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        .chat-item {
-            padding: 15px 20px;
-            border-bottom: 1px solid #e9edef;
-            cursor: pointer;
-            transition: background 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .chat-item:hover {
-            background: #f0f2f5;
-        }
-
-        .chat-item.active {
-            background: #e9edef;
-        }
-
-        .chat-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: #075e54;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-
-        .chat-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .chat-name {
-            font-weight: 500;
-            font-size: 16px;
-            margin-bottom: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .chat-meta {
-            font-size: 12px;
-            color: #667781;
-        }
-
-        .chat-remove {
-            padding: 6px 12px;
-            background: #ff4444;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 11px;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .chat-item:hover .chat-remove {
-            opacity: 1;
-        }
-
-        .sidebar-footer {
-            padding: 15px 20px;
-            border-top: 1px solid #e9edef;
-        }
-
-        .clear-btn {
-            width: 100%;
-            padding: 10px;
-            background: #ff4444;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-        }
-
-        .clear-btn:hover {
-            background: #cc0000;
-        }
-
-        /* Main Chat Area */
-        #chatView {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: #ece5dd;
-        }
-
-        .chat-header {
-            background: #075e54;
-            color: white;
-            padding: 15px 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        .menu-btn {
-            display: none;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            padding: 5px;
-        }
-
-        .chat-header-info {
-            flex: 1;
-        }
-
-        .chat-header h2 {
-            font-size: 18px;
-            margin-bottom: 2px;
-        }
-
-        .chat-header p {
-            font-size: 12px;
-            opacity: 0.8;
-        }
-
-        #messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            scroll-behavior: smooth;
-        }
-
-        .date-separator {
-            text-align: center;
-            margin: 20px 0;
-        }
-
-        .date-separator span {
-            background: rgba(225, 245, 254, 0.92);
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            color: #54656f;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-
-        .message-row {
-            display: flex;
-            margin-bottom: 12px;
-            align-items: flex-end;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .message-row.sent {
-            justify-content: flex-end;
-        }
-
-        .message-row.received {
-            justify-content: flex-start;
-        }
-
-        .message-bubble {
-            max-width: 65%;
-            padding: 8px 12px;
-            border-radius: 8px;
-            position: relative;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            word-wrap: break-word;
-            transition: transform 0.2s;
-        }
-
-        .message-bubble:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        }
-
-        .sent .message-bubble {
-            background: #d9fdd3;
-            border-bottom-right-radius: 2px;
-        }
-
-        .received .message-bubble {
-            background: #fff;
-            border-bottom-left-radius: 2px;
-        }
-
-        .sender-name {
-            font-weight: 600;
-            font-size: 13px;
-            color: #075e54;
-            margin-bottom: 4px;
-        }
-
-        .message-text {
-            font-size: 14px;
-            color: #111b21;
-            line-height: 1.4;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .message-media {
-            margin-top: 8px;
-            border-radius: 8px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .message-media:hover {
-            transform: scale(1.02);
-        }
-
-        .message-media img,
-        .message-media video {
-            max-width: 280px;
-            width: 100%;
-            display: block;
-            border-radius: 8px;
-        }
-
-        .message-media audio {
-            width: 100%;
-            max-width: 280px;
-        }
-
-        .timestamp {
-            font-size: 11px;
-            color: #667781;
-            margin-top: 4px;
-            text-align: right;
-        }
-
-        .empty-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: #667781;
-            text-align: center;
-            padding: 40px;
-        }
-
-        .empty-state h2 {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: #111b21;
-        }
-
-        .empty-state p {
-            font-size: 14px;
-        }
-
-        /* Media Modal */
-        #mediaModal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 10000;
-            animation: fadeIn 0.2s ease;
-        }
-
-        #mediaModal.show {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-controls {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            gap: 10px;
-            z-index: 10001;
-        }
-
-        .modal-btn {
-            padding: 12px 18px;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        .modal-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: scale(1.05);
-        }
-
-        .modal-btn.download {
-            background: rgba(37, 211, 102, 0.3);
-        }
-
-        .modal-btn.download:hover {
-            background: rgba(37, 211, 102, 0.5);
-        }
-
-        #modalContent {
-            max-width: 90vw;
-            max-height: 80vh;
-            position: relative;
-        }
-
-        #modalContent img,
-        #modalContent video {
-            max-width: 100%;
-            max-height: 80vh;
-            border-radius: 8px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-        }
-
-        .modal-nav {
-            position: fixed;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 15px 20px;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 24px;
-            transition: all 0.2s;
-            z-index: 10001;
-        }
-
-        .modal-nav:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-50%) scale(1.1);
-        }
-
-        #modalPrev { left: 20px; }
-        #modalNext { right: 20px; }
-
-        /* Loading */
-        #loading {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 9999;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #loading.show {
-            display: flex;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(255, 255, 255, 0.3);
-            border-top-color: #25d366;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            #sidebar {
-                position: fixed;
-                left: 0;
-                top: 0;
-                height: 100vh;
-                z-index: 1000;
-                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-            }
-
-            #sidebar.mobile-hidden {
-                transform: translateX(-100%);
-            }
-
-            .menu-btn {
-                display: block;
-            }
-
-            .message-bubble {
-                max-width: 80%;
-            }
-
-            .modal-controls {
-                top: 10px;
-                right: 10px;
-                flex-direction: column;
-            }
-
-            .modal-btn {
-                padding: 10px 14px;
-                font-size: 12px;
-            }
-
-            .modal-nav {
-                padding: 10px 15px;
-                font-size: 20px;
-            }
-
-            #modalPrev { left: 10px; }
-            #modalNext { right: 10px; }
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 0, 0, 0.3);
-        }
-
-        input[type="file"] {
-            display: none;
-        }
+        :root {
+  --color-white: rgba(255, 255, 255, 1);
+  --color-black: rgba(0, 0, 0, 1);
+  --color-cream-50: rgba(252, 252, 249, 1);
+  --color-cream-100: rgba(255, 255, 253, 1);
+  --color-gray-200: rgba(245, 245, 245, 1);
+  --color-gray-300: rgba(167, 169, 169, 1);
+  --color-gray-400: rgba(119, 124, 124, 1);
+  --color-slate-500: rgba(98, 108, 113, 1);
+  --color-brown-600: rgba(94, 82, 64, 1);
+  --color-charcoal-700: rgba(31, 33, 33, 1);
+  --color-charcoal-800: rgba(38, 40, 40, 1);
+  --color-slate-900: rgba(19, 52, 59, 1);
+  --color-teal-300: rgba(50, 184, 198, 1);
+  --color-teal-400: rgba(45, 166, 178, 1);
+  --color-teal-500: rgba(33, 128, 141, 1);
+  --color-teal-600: rgba(29, 116, 128, 1);
+  --color-teal-700: rgba(26, 104, 115, 1);
+  --color-teal-800: rgba(41, 150, 161, 1);
+  --color-red-400: rgba(255, 84, 89, 1);
+  --color-red-500: rgba(192, 21, 47, 1);
+  --color-orange-400: rgba(230, 129, 97, 1);
+  --color-orange-500: rgba(168, 75, 47, 1);
+
+  --color-brown-600-rgb: 94, 82, 64;
+  --color-teal-500-rgb: 33, 128, 141;
+  --color-slate-900-rgb: 19, 52, 59;
+  --color-slate-500-rgb: 98, 108, 113;
+  --color-red-500-rgb: 192, 21, 47;
+  --color-red-400-rgb: 255, 84, 89;
+  --color-orange-500-rgb: 168, 75, 47;
+  --color-orange-400-rgb: 230, 129, 97;
+
+  --color-bg-1: rgba(59, 130, 246, 0.08);
+  --color-bg-2: rgba(245, 158, 11, 0.08);
+  --color-bg-3: rgba(34, 197, 94, 0.08);
+  --color-bg-4: rgba(239, 68, 68, 0.08);
+  --color-bg-5: rgba(147, 51, 234, 0.08);
+  --color-bg-6: rgba(249, 115, 22, 0.08);
+  --color-bg-7: rgba(236, 72, 153, 0.08);
+  --color-bg-8: rgba(6, 182, 212, 0.08);
+
+  --color-background: var(--color-cream-50);
+  --color-surface: var(--color-cream-100);
+  --color-text: var(--color-slate-900);
+  --color-text-secondary: var(--color-slate-500);
+  --color-primary: var(--color-teal-500);
+  --color-primary-hover: var(--color-teal-600);
+  --color-primary-active: var(--color-teal-700);
+  --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
+  --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
+  --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
+  --color-border: rgba(var(--color-brown-600-rgb), 0.2);
+  --color-btn-primary-text: var(--color-cream-50);
+  --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
+  --color-card-border-inner: rgba(var(--color-brown-600-rgb), 0.12);
+  --color-error: var(--color-red-500);
+  --color-success: var(--color-teal-500);
+  --color-warning: var(--color-orange-500);
+  --color-info: var(--color-slate-500);
+  --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
+  --color-select-caret: rgba(var(--color-slate-900-rgb), 0.8);
+
+  --font-family-base: "FKGroteskNeue", "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family-mono: "Berkeley Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-4xl: 30px;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 550;
+  --font-weight-bold: 600;
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --letter-spacing-tight: -0.01em;
+
+  --space-0: 0;
+  --space-1: 1px;
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+
+  --radius-sm: 6px;
+  --radius-base: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+  --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --whatsapp-green: #075e54;
+  --whatsapp-light-green: #dcf8c6;
+  --whatsapp-bg: #ece5dd;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-gray-400-rgb: 119, 124, 124;
+    --color-teal-300-rgb: 50, 184, 198;
+    --color-gray-300-rgb: 167, 169, 169;
+    --color-gray-200-rgb: 245, 245, 245;
+
+    --color-bg-1: rgba(29, 78, 216, 0.15);
+    --color-bg-2: rgba(180, 83, 9, 0.15);
+    --color-bg-3: rgba(21, 128, 61, 0.15);
+    --color-bg-4: rgba(185, 28, 28, 0.15);
+    --color-bg-5: rgba(107, 33, 168, 0.15);
+    --color-bg-6: rgba(194, 65, 12, 0.15);
+    --color-bg-7: rgba(190, 24, 93, 0.15);
+    --color-bg-8: rgba(8, 145, 178, 0.15);
+
+    --color-background: var(--color-charcoal-700);
+    --color-surface: var(--color-charcoal-800);
+    --color-text: var(--color-gray-200);
+    --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
+    --color-primary: var(--color-teal-300);
+    --color-primary-hover: var(--color-teal-400);
+    --color-primary-active: var(--color-teal-800);
+    --color-secondary: rgba(var(--color-gray-400-rgb), 0.15);
+    --color-secondary-hover: rgba(var(--color-gray-400-rgb), 0.25);
+    --color-secondary-active: rgba(var(--color-gray-400-rgb), 0.3);
+    --color-border: rgba(var(--color-gray-400-rgb), 0.3);
+    --color-error: var(--color-red-400);
+    --color-success: var(--color-teal-300);
+    --color-warning: var(--color-orange-400);
+    --color-info: var(--color-gray-300);
+    --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
+    --color-btn-primary-text: var(--color-slate-900);
+    --color-card-border: rgba(var(--color-gray-400-rgb), 0.2);
+    --color-card-border-inner: rgba(var(--color-gray-400-rgb), 0.15);
+    --shadow-inset-sm: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+    --color-select-caret: rgba(var(--color-gray-200-rgb), 0.8);
+
+    --whatsapp-bg: #0d1418;
+  }
+}
+
+@font-face {
+  font-family: 'FKGroteskNeue';
+  src: url('https://r2cdn.perplexity.ai/fonts/FKGroteskNeue.woff2') format('woff2');
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family-base);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  overflow: hidden;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  position: relative;
+}
+
+.sidebar {
+  width: 350px;
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--duration-normal) var(--ease-standard);
+}
+
+.sidebar.mobile-hidden {
+  transform: translateX(-100%);
+}
+
+.sidebar-header {
+  background-color: var(--whatsapp-green);
+  color: white;
+  padding: var(--space-16);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-header h1 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mobile-close {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  font-size: var(--font-size-2xl);
+  cursor: pointer;
+  padding: var(--space-4);
+}
+
+.upload-section {
+  padding: var(--space-16);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.upload-btn, .restore-btn {
+  width: 100%;
+  padding: var(--space-12);
+  background-color: var(--color-primary);
+  color: var(--color-btn-primary-text);
+  border: none;
+  border-radius: var(--radius-base);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--space-8);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.upload-btn:hover, .restore-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.restore-btn {
+  background-color: var(--color-secondary);
+  color: var(--color-text);
+}
+
+.restore-btn:hover {
+  background-color: var(--color-secondary-hover);
+}
+
+.file-input {
+  display: none;
+}
+
+.chat-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.chat-item {
+  padding: var(--space-16);
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.chat-item:hover {
+  background-color: var(--color-secondary);
+}
+
+.chat-item.active {
+  background-color: var(--color-bg-1);
+}
+
+.chat-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  flex-shrink: 0;
+}
+
+.chat-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-name {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-preview {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: var(--space-4);
+}
+
+.chat-remove {
+  background: none;
+  border: none;
+  color: var(--color-error);
+  cursor: pointer;
+  padding: var(--space-4);
+  font-size: var(--font-size-lg);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.chat-item:hover .chat-remove {
+  opacity: 1;
+}
+
+.manage-section {
+  padding: var(--space-16);
+  border-top: 1px solid var(--color-border);
+}
+
+.clear-all-btn {
+  width: 100%;
+  padding: var(--space-10);
+  background-color: var(--color-error);
+  color: white;
+  border: none;
+  border-radius: var(--radius-base);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.clear-all-btn:hover {
+  opacity: 0.9;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.mobile-header {
+  display: none;
+  background-color: var(--whatsapp-green);
+  color: white;
+  padding: var(--space-16);
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.mobile-menu-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: var(--font-size-2xl);
+  cursor: pointer;
+  padding: var(--space-4);
+}
+
+.mobile-header h2 {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-header {
+  background-color: var(--whatsapp-green);
+  color: white;
+  padding: var(--space-16);
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.chat-header-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.chat-header-info h2 {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.chat-header-info p {
+  font-size: var(--font-size-sm);
+  opacity: 0.9;
+  margin-top: var(--space-2);
+}
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  background-color: var(--whatsapp-bg);
+  padding: var(--space-16);
+  max-height: calc(100vh - 72px);
+  scroll-behavior: smooth;
+}
+
+@media (max-width: 768px) {
+  .messages-container {
+    max-height: calc(100vh - 128px);
+  }
+}
+
+.date-separator {
+  text-align: center;
+  margin: var(--space-16) 0;
+}
+
+.date-separator span {
+  background-color: var(--color-surface);
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-sm);
+  color: #666666;
+  box-shadow: var(--shadow-sm);
+}
+
+.message {
+  display: flex;
+  margin-bottom: var(--space-12);
+  animation: fadeIn 0.3s var(--ease-standard);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message.sent {
+  justify-content: flex-end;
+}
+
+.message-bubble {
+  max-width: 65%;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-base);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+.message.received .message-bubble {
+  background-color: white;
+  border-top-left-radius: 0;
+}
+
+.message.sent .message-bubble {
+  background-color: var(--whatsapp-light-green);
+  border-top-right-radius: 0;
+}
+
+.message-sender {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  color: #555555;
+  margin-bottom: var(--space-4);
+}
+
+.message-text {
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
+  margin-bottom: var(--space-4);
+  color: #333333;
+}
+
+.message-media {
+  margin-top: var(--space-8);
+  border-radius: var(--radius-base);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.message-media img {
+  max-width: 100%;
+  display: block;
+  border-radius: var(--radius-base);
+}
+
+.message-media video {
+  max-width: 100%;
+  display: block;
+  border-radius: var(--radius-base);
+}
+
+.message-media audio {
+  width: 100%;
+  margin-top: var(--space-8);
+}
+
+.message-time {
+  font-size: var(--font-size-xs);
+  color: #999999;
+  text-align: right;
+  margin-top: var(--space-4);
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: var(--space-32);
+  text-align: center;
+  background-color: var(--whatsapp-bg);
+}
+
+.empty-state-icon {
+  font-size: 64px;
+  margin-bottom: var(--space-16);
+}
+
+.empty-state h2 {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-8);
+  color: var(--color-text);
+}
+
+.empty-state p {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  max-width: 400px;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.95);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.active {
+  display: flex;
+}
+
+.modal-content {
+  position: relative;
+  max-width: 90%;
+  max-height: 90%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content img,
+.modal-content video {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+}
+
+.modal-close,
+.modal-download,
+.modal-prev,
+.modal-next {
+  position: fixed;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+  font-size: var(--font-size-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+  color: var(--color-text);
+}
+
+.modal-close {
+  top: var(--space-20);
+  right: var(--space-20);
+}
+
+.modal-download {
+  top: var(--space-20);
+  right: 80px;
+}
+
+.modal-prev {
+  left: var(--space-20);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.modal-next {
+  right: var(--space-20);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.modal-close:hover,
+.modal-download:hover,
+.modal-prev:hover,
+.modal-next:hover {
+  background-color: white;
+}
+
+.loading {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--color-surface);
+  padding: var(--space-24);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 999;
+  text-align: center;
+  display: none;
+}
+
+.loading.active {
+  display: block;
+}
+
+.loading-spinner {
+  border: 3px solid var(--color-border);
+  border-top: 3px solid var(--color-primary);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto var(--space-12);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading p {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    z-index: 100;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .mobile-close {
+    display: block;
+  }
+
+  .mobile-header {
+    display: flex;
+  }
+
+  .chat-header {
+    display: none;
+  }
+
+  .message-bubble {
+    max-width: 80%;
+  }
+
+  .modal-close,
+  .modal-download {
+    top: var(--space-12);
+    right: var(--space-12);
+    width: 40px;
+    height: 40px;
+  }
+
+  .modal-download {
+    right: 60px;
+  }
+
+  .modal-prev,
+  .modal-next {
+    width: 40px;
+    height: 40px;
+  }
+}
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Sidebar -->
-        <div id="sidebar">
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <p>Processing chat files...</p>
+    </div>
+
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h1>💬 WhatsApp Viewer</h1>
-                <p>Upload and view your chats</p>
+                <h1>WhatsApp Chats</h1>
+                <button class="mobile-close" id="closeSidebar">×</button>
             </div>
 
             <div class="upload-section">
-                <button class="upload-btn" id="uploadBtn">
-                    📁 Upload ZIP File
-                </button>
-                <input type="file" id="fileInput" accept=".zip" />
+                <input type="file" id="fileInput" class="file-input" accept=".zip">
+<button class="upload-btn" id="uploadBtn">📁 Upload ZIP File</button>
 
-                <button class="upload-btn secondary" id="folderBtn">
-                    📂 Upload Folder
-                </button>
-                <input type="file" id="folderInput" webkitdirectory directory multiple />
+<input type="file" id="folderInput" class="file-input" webkitdirectory directory multiple>
+<button class="upload-btn" id="folderBtn">📂 Upload Folder</button>
 
-                <button class="upload-btn restore" id="restoreBtn">
-                    🔄 Restore Backup
-                </button>
-                <input type="file" id="restoreInput" accept=".json" />
+<input type="file" id="restoreInput" class="file-input" accept=".json">
+<button class="restore-btn" id="restoreBtn">🔄 Restore from Backup</button>
+
+<div style="margin-top:8px;font-size:12px;color:var(--color-text-secondary);">
+    <strong>Upload ZIP File:</strong> Use this for exported WhatsApp ZIPs (supports media)<br>
+    <strong>Upload Folder:</strong> Select the entire WhatsApp export folder (works best on mobile)
+</div>
             </div>
 
-            <div id="chatList"></div>
-
-            <div class="sidebar-footer">
-                <button class="clear-btn" id="clearAllBtn">Clear All Chats</button>
-            </div>
-        </div>
-
-        <!-- Main Chat View -->
-        <div id="chatView">
-            <div class="chat-header">
-                <button class="menu-btn" id="openSidebar">☰</button>
-                <div class="chat-header-info" id="mobileHeaderTitle">
-                    <h2>Select a chat</h2>
-                    <p>Choose from sidebar</p>
-                </div>
+            <div class="chat-list" id="chatList">
+                <!-- Chat items will be dynamically added here -->
             </div>
 
-            <div id="messages">
+            <div class="manage-section">
+                <button class="clear-all-btn" id="clearAllBtn">🗑️ Clear All Chats</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="mobile-header" id="mobileHeader">
+                <button class="mobile-menu-btn" id="openSidebar">☰</button>
+                <h2 id="mobileHeaderTitle">WhatsApp Chat Viewer</h2>
+            </div>
+
+            <div id="chatView">
                 <div class="empty-state">
-                    <h2>Welcome to WhatsApp Viewer</h2>
-                    <p>Upload a WhatsApp export (ZIP or folder) to view your chats</p>
+                    <div class="empty-state-icon">💬</div>
+                    <h2>Welcome to WhatsApp Chat Viewer</h2>
+                    <p>Upload WhatsApp chat ZIP files to view your conversations with full media support</p>
                 </div>
             </div>
+        </main>
+    </div>
+
+    <div class="modal" id="mediaModal">
+        <button class="modal-close" id="modalClose">×</button>
+        <button class="modal-download" id="modalDownload">↓</button>
+        <button class="modal-prev" id="modalPrev">‹</button>
+        <button class="modal-next" id="modalNext">›</button>
+        <div class="modal-content" id="modalContent">
+            <!-- Media content will be dynamically added here -->
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loading">
-        <div class="spinner"></div>
-    </div>
-
-    <!-- Media Modal -->
-    <div id="mediaModal">
-        <div class="modal-controls">
-            <button class="modal-btn download" id="modalDownload">⬇️ Download</button>
-            <button class="modal-btn" id="modalClose">✖️ Close</button>
-        </div>
-        <button class="modal-nav" id="modalPrev">‹</button>
-        <div id="modalContent"></div>
-        <button class="modal-nav" id="modalNext">›</button>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script>
-        // Global state
-        let chats = [];
-        let currentChatId = null;
-        let allMediaItems = [];
-        let currentMediaIndex = 0;
-
-        // DOM Elements
-        const fileInput = document.getElementById('fileInput');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const folderInput = document.getElementById('folderInput');
-        const folderBtn = document.getElementById('folderBtn');
-        const restoreInput = document.getElementById('restoreInput');
-        const restoreBtn = document.getElementById('restoreBtn');
-        const chatList = document.getElementById('chatList');
-        const chatView = document.getElementById('chatView');
-        const clearAllBtn = document.getElementById('clearAllBtn');
-        const sidebar = document.getElementById('sidebar');
-        const openSidebar = document.getElementById('openSidebar');
-        const mobileHeaderTitle = document.getElementById('mobileHeaderTitle');
-        const loading = document.getElementById('loading');
-        const mediaModal = document.getElementById('mediaModal');
-        const modalContent = document.getElementById('modalContent');
-        const modalClose = document.getElementById('modalClose');
-        const modalDownload = document.getElementById('modalDownload');
-        const modalPrev = document.getElementById('modalPrev');
-        const modalNext = document.getElementById('modalNext');
-
-        // Event Listeners
-        uploadBtn.addEventListener('click', () => fileInput.click());
-        folderBtn.addEventListener('click', () => folderInput.click());
-        restoreBtn.addEventListener('click', () => restoreInput.click());
-        fileInput.addEventListener('change', handleFileUpload);
-        folderInput.addEventListener('change', handleFolderUpload);
-        restoreInput.addEventListener('change', handleRestore);
-        clearAllBtn.addEventListener('click', clearAllChats);
-        openSidebar.addEventListener('click', () => sidebar.classList.remove('mobile-hidden'));
-        modalClose.addEventListener('click', closeModal);
-        modalDownload.addEventListener('click', downloadMedia);
-        modalPrev.addEventListener('click', () => navigateMedia(-1));
-        modalNext.addEventListener('click', () => navigateMedia(1));
-
-        // Keyboard navigation
-        document.addEventListener('keydown', (e) => {
-            if (mediaModal.classList.contains('show')) {
-                if (e.key === 'Escape') closeModal();
-                if (e.key === 'ArrowLeft') navigateMedia(-1);
-                if (e.key === 'ArrowRight') navigateMedia(1);
-            }
-        });
-
-        // Close modal on background click
-        mediaModal.addEventListener('click', (e) => {
-            if (e.target === mediaModal) closeModal();
-        });
-
-        // Handle ZIP file upload
-        async function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            showLoading(true);
-            try {
-                const zip = await JSZip.loadAsync(file);
-                const chatData = await extractChatFromZip(zip);
-                addChat(chatData);
-                autoDownloadBackup();
-            } catch (error) {
-                alert('Error loading ZIP: ' + error.message);
-            }
-            showLoading(false);
-            fileInput.value = '';
-        }
-
-        // Handle folder upload
-        async function handleFolderUpload(e) {
-            const files = Array.from(e.target.files);
-            if (files.length === 0) return;
-
-            showLoading(true);
-            try {
-                const chatData = await extractChatFromFolder(files);
-                addChat(chatData);
-                autoDownloadBackup();
-            } catch (error) {
-                alert('Error loading folder: ' + error.message);
-            }
-            showLoading(false);
-            folderInput.value = '';
-        }
-
-        // Extract chat from ZIP
-        async function extractChatFromZip(zip) {
-            let chatText = '';
-            let chatFileName = '';
-            const mediaFiles = new Map();
-
-            // Find chat text file
-            for (const [filename, file] of Object.entries(zip.files)) {
-                if (filename.endsWith('_chat.txt') || (filename.endsWith('.txt') && !file.dir)) {
-                    chatText = await file.async('text');
-                    chatFileName = filename;
-                    break;
-                }
-            }
-
-            if (!chatText) throw new Error('Chat text file not found in ZIP');
-
-            // Extract media files
-            for (const [filename, file] of Object.entries(zip.files)) {
-                if (!file.dir && isMediaFile(filename)) {
-                    const blob = await file.async('blob');
-                    const url = URL.createObjectURL(blob);
-                    const baseName = filename.split('/').pop();
-                    mediaFiles.set(baseName, { url, filename: baseName });
-                }
-            }
-
-            const messages = parseChat(chatText);
-            const chatName = extractChatName(messages);
-
-            return {
-                id: Date.now(),
-                name: chatName,
-                messages,
-                mediaFiles,
-                messageCount: messages.length,
-                timestamp: new Date().toLocaleString()
-            };
-        }
-
-        // Extract chat from folder
-        async function extractChatFromFolder(files) {
-            let chatText = '';
-            let chatFileName = '';
-            const mediaFiles = new Map();
-
-            // Find chat text file
-            for (const file of files) {
-                if (file.name.endsWith('_chat.txt') || (file.name.endsWith('.txt') && file.type === 'text/plain')) {
-                    chatText = await file.text();
-                    chatFileName = file.name;
-                    break;
-                }
-            }
-
-            if (!chatText) throw new Error('Chat text file not found in folder');
-
-            // Extract media files
-            for (const file of files) {
-                if (isMediaFile(file.name)) {
-                    const url = URL.createObjectURL(file);
-                    mediaFiles.set(file.name, { url, filename: file.name });
-                }
-            }
-
-            const messages = parseChat(chatText);
-            const chatName = extractChatName(messages);
-
-            return {
-                id: Date.now(),
-                name: chatName,
-                messages,
-                mediaFiles,
-                messageCount: messages.length,
-                timestamp: new Date().toLocaleString()
-            };
-        }
-
-        // Check if file is media
-        function isMediaFile(filename) {
-            const mediaExtensions = [
-                '.jpg', '.jpeg', '.png', '.gif', '.webp',
-                '.mp4', '.mov', '.avi', '.mkv',
-                '.mp3', '.ogg', '.opus', '.m4a', '.wav'
-            ];
-            return mediaExtensions.some(ext => filename.toLowerCase().endsWith(ext));
-        }
-
-        // Parse WhatsApp chat text
-        function parseChat(text) {
-            const lines = text.split('\n');
-            const messages = [];
-            const patterns = [
-                /^(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s+(\d{1,2}:\d{2})\s*(?:AM|PM|am|pm)?\s*[-–]\s*([^:]+):\s*(.*)$/,
-                /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s+(\d{1,2}:\d{2}:\d{2})\s*(?:AM|PM|am|pm)?\]\s*([^:]+):\s*(.*)$/
-            ];
-
-            let currentMessage = null;
-
-            for (const line of lines) {
-                let matched = false;
-
-                for (const pattern of patterns) {
-                    const match = line.match(pattern);
-                    if (match) {
-                        if (currentMessage) messages.push(currentMessage);
-
-                        const [, date, time, sender, text] = match;
-                        const datetime = parseDateTime(date, time);
-
-                        currentMessage = {
-                            datetime,
-                            sender: sender.trim(),
-                            text: text.trim(),
-                            media: []
-                        };
-                        matched = true;
-                        break;
-                    }
-                }
-
-                if (!matched && currentMessage && line.trim()) {
-                    currentMessage.text += '\n' + line.trim();
-                }
-            }
-
-            if (currentMessage) messages.push(currentMessage);
-
-            return messages.sort((a, b) => a.datetime - b.datetime);
-        }
-
-        // Parse date and time
-        function parseDateTime(dateStr, timeStr) {
-            const [day, month, year] = dateStr.split('/').map(Number);
-            const [hour, minute] = timeStr.split(':').map(Number);
-            const fullYear = year < 100 ? 2000 + year : year;
-            return new Date(fullYear, month - 1, day, hour, minute);
-        }
-
-        // Extract chat name from messages
-        function extractChatName(messages) {
-            if (messages.length === 0) return 'Unknown Chat';
-
-            const senders = [...new Set(messages.map(m => m.sender))];
-            if (senders.length === 1) return senders[0];
-            if (senders.length === 2) return senders.join(' & ');
-            return `Group (${senders.length} members)`;
-        }
-
-        // Add chat to list
-        function addChat(chatData) {
-            chats.push(chatData);
-            renderChatList();
-            selectChat(chatData.id);
-        }
-
-        // Render chat list
-        function renderChatList() {
-            if (chats.length === 0) {
-                chatList.innerHTML = '<div style="padding: 20px; text-align: center; color: #667781;">No chats loaded</div>';
-                return;
-            }
-
-            chatList.innerHTML = chats.map(chat => `
-                <div class="chat-item ${chat.id === currentChatId ? 'active' : ''}" onclick="selectChat(${chat.id})">
-                    <div class="chat-avatar">${chat.name.charAt(0).toUpperCase()}</div>
-                    <div class="chat-info">
-                        <div class="chat-name">${chat.name}</div>
-                        <div class="chat-meta">${chat.messageCount} messages • ${chat.timestamp}</div>
-                    </div>
-                    <button class="chat-remove" onclick="removeChat(${chat.id}); event.stopPropagation();">Remove</button>
-                </div>
-            `).join('');
-        }
-
-        // Select and display chat
-        function selectChat(chatId) {
-            currentChatId = chatId;
-            const chat = chats.find(c => c.id === chatId);
-            if (!chat) return;
-
-            renderChatList();
-            renderMessages(chat);
-            
-            // Update mobile header
-            mobileHeaderTitle.innerHTML = `
-                <h2>${chat.name}</h2>
-                <p>${chat.messageCount} messages</p>
-            `;
-
-            // Hide sidebar on mobile
-            if (window.innerWidth <= 768) {
-                sidebar.classList.add('mobile-hidden');
-            }
-        }
-
-        // Render messages
-        function renderMessages(chat) {
-            const messagesContainer = document.getElementById('messages');
-            messagesContainer.innerHTML = '';
-            allMediaItems = [];
-
-            let lastDate = '';
-            const firstSender = chat.messages[0]?.sender;
-
-            chat.messages.forEach(msg => {
-                const dateStr = msg.datetime.toLocaleDateString();
-                
-                if (dateStr !== lastDate) {
-                    const dateSep = document.createElement('div');
-                    dateSep.className = 'date-separator';
-                    dateSep.innerHTML = `<span>${dateStr}</span>`;
-                    messagesContainer.appendChild(dateSep);
-                    lastDate = dateStr;
-                }
-
-                const isSent = msg.sender === firstSender;
-                const row = document.createElement('div');
-                row.className = `message-row ${isSent ? 'sent' : 'received'}`;
-
-                const bubble = document.createElement('div');
-                bubble.className = 'message-bubble';
-
-                if (!isSent) {
-                    const senderName = document.createElement('div');
-                    senderName.className = 'sender-name';
-                    senderName.textContent = msg.sender;
-                    bubble.appendChild(senderName);
-                }
-
-                // Check for media
-                const mediaPattern = /(IMG|VID|AUD|DOC|PHOTO|VIDEO|AUDIO)-[\w-]+\.(jpg|jpeg|png|gif|webp|mp4|mov|avi|mkv|mp3|ogg|opus|m4a|wav)/gi;
-                const mediaMatches = msg.text.match(mediaPattern);
-
-                if (mediaMatches) {
-                    mediaMatches.forEach(mediaName => {
-                        const mediaData = chat.mediaFiles.get(mediaName);
-                        if (mediaData) {
-                            const mediaDiv = document.createElement('div');
-                            mediaDiv.className = 'message-media';
-
-                            const ext = mediaName.split('.').pop().toLowerCase();
-                            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-                                const img = document.createElement('img');
-                                img.src = mediaData.url;
-                                img.alt = mediaName;
-                                mediaDiv.appendChild(img);
-                                allMediaItems.push({ url: mediaData.url, filename: mediaName, type: 'image' });
-                            } else if (['mp4', 'mov', 'avi', 'mkv'].includes(ext)) {
-                                const video = document.createElement('video');
-                                video.src = mediaData.url;
-                                video.controls = true;
-                                mediaDiv.appendChild(video);
-                                allMediaItems.push({ url: mediaData.url, filename: mediaName, type: 'video' });
-                            } else if (['mp3', 'ogg', 'opus', 'm4a', 'wav'].includes(ext)) {
-                                const audio = document.createElement('audio');
-                                audio.src = mediaData.url;
-                                audio.controls = true;
-                                mediaDiv.appendChild(audio);
-                            }
-
-                            mediaDiv.addEventListener('click', () => {
-                                const index = allMediaItems.findIndex(m => m.url === mediaData.url);
-                                if (index >= 0) openMediaModal(index);
-                            });
-
-                            bubble.appendChild(mediaDiv);
-                        }
-                    });
-                }
-
-                // Add text if not just media reference
-                const textWithoutMedia = msg.text.replace(mediaPattern, '').trim();
-                if (textWithoutMedia && textWithoutMedia !== '<Media omitted>') {
-                    const textDiv = document.createElement('div');
-                    textDiv.className = 'message-text';
-                    textDiv.textContent = textWithoutMedia;
-                    bubble.appendChild(textDiv);
-                }
-
-                const timestamp = document.createElement('div');
-                timestamp.className = 'timestamp';
-                timestamp.textContent = msg.datetime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                bubble.appendChild(timestamp);
-
-                row.appendChild(bubble);
-                messagesContainer.appendChild(row);
-            });
-
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-
-        // Media modal functions
-        function openMediaModal(index) {
-            if (index < 0 || index >= allMediaItems.length) return;
-            
-            currentMediaIndex = index;
-            const media = allMediaItems[index];
-            
-            modalContent.innerHTML = '';
-            
-            if (media.type === 'image') {
-                const img = document.createElement('img');
-                img.src = media.url;
-                img.alt = media.filename;
-                modalContent.appendChild(img);
-            } else if (media.type === 'video') {
-                const video = document.createElement('video');
-                video.src = media.url;
-                video.controls = true;
-                video.autoplay = true;
-                modalContent.appendChild(video);
-            }
-            
-            mediaModal.classList.add('show');
-        }
-
-        function closeModal() {
-            mediaModal.classList.remove('show');
-            modalContent.innerHTML = '';
-        }
-
-        function navigateMedia(direction) {
-            const newIndex = currentMediaIndex + direction;
-            if (newIndex >= 0 && newIndex < allMediaItems.length) {
-                openMediaModal(newIndex);
-            }
-        }
-
-        function downloadMedia() {
-            const media = allMediaItems[currentMediaIndex];
-            if (!media) return;
-
-            const a = document.createElement('a');
-            a.href = media.url;
-            a.download = media.filename;
-            a.click();
-        }
-
-        // Remove chat
-        function removeChat(chatId) {
-            chats = chats.filter(c => c.id !== chatId);
-            if (currentChatId === chatId) {
-                currentChatId = null;
-                document.getElementById('messages').innerHTML = '<div class="empty-state"><h2>Chat Removed</h2><p>Select another chat from the sidebar</p></div>';
-            }
-            renderChatList();
-            autoDownloadBackup();
-        }
-
-        // Clear all chats
-        function clearAllChats() {
-            if (!confirm('Clear all chats? This cannot be undone.')) return;
-            chats = [];
-            currentChatId = null;
-            renderChatList();
-            document.getElementById('messages').innerHTML = '<div class="empty-state"><h2>All Chats Cleared</h2><p>Upload new chats to get started</p></div>';
-        }
-
-        // Auto download backup
-        function autoDownloadBackup() {
-            if (chats.length === 0) return;
-
-            const backup = {
-                version: 1,
-                timestamp: new Date().toISOString(),
-                chats: chats.map(chat => ({
-                    ...chat,
-                    mediaFiles: Array.from(chat.mediaFiles.entries())
-                }))
-            };
-
-            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `whatsapp-backup-${Date.now()}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        // Restore from backup
-        async function handleRestore(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            showLoading(true);
-            try {
-                const text = await file.text();
-                const backup = JSON.parse(text);
-
-                if (!backup.chats || !Array.isArray(backup.chats)) {
-                    throw new Error('Invalid backup file');
-                }
-
-                chats = backup.chats.map(chat => ({
-                    ...chat,
-                    mediaFiles: new Map(chat.mediaFiles)
-                }));
-
-                renderChatList();
-                if (chats.length > 0) {
-                    selectChat(chats[0].id);
-                }
-
-                alert('Backup restored successfully!');
-            } catch (error) {
-                alert('Error restoring backup: ' + error.message);
-            }
-            showLoading(false);
-            restoreInput.value = '';
-        }
-
-        // Show/hide loading
-        function showLoading(show) {
-            loading.classList.toggle('show', show);
-        }
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>
